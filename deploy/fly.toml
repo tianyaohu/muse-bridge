@@ -1,0 +1,17 @@
+# fly launch --copy-config --no-deploy  (from /workspace/muse-bridge, after: cp deploy/fly.toml .)
+app = "nori-muse-bridge"          # change if taken
+primary_region = "sea"
+[build]
+  dockerfile = "Dockerfile"
+[env]
+  MUSE_BRIDGE_PORT = "8080"
+  MUSE_BRIDGE_HOST = "0.0.0.0"
+  MUSE_BRIDGE_INBOX = "/data/inbox"
+[[mounts]]
+  source = "muse_bridge_data"
+  destination = "/data"
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "off"
+  min_machines_running = 1

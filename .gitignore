@@ -1,0 +1,8 @@
+.env
+.venv/
+inbox/
+*.log
+bin/
+nori-to-muse/.env
+__pycache__/
+*.pyc

@@ -1,0 +1,7 @@
+{
+  "name": "useapi-muse",
+  "transport": "streamable_http",
+  "url": "https://api.useapi.net/v1/muse/mcp",
+  "headers": { "Authorization": "Bearer ${USEAPI_TOKEN}" },
+  "notes": "Third-party (useapi.net, not Meta). Token is Frank's useapi.net API token; never paste it in chat - store it in the Grok Bot vault / connector secret field."
+}
