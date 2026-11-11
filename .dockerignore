@@ -1,0 +1,15 @@
+.git
+.github
+.venv
+.env
+inbox
+data
+tests
+**/__pycache__
+**/*.pyc
+.mypy_cache
+.ruff_cache
+.pytest_cache
+nori-to-muse/.env
+*.egg-info
+*.log

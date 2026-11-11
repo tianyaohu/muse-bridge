@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
-# Run ON THE MAC MINI after copying /workspace/muse-bridge to ~/muse-bridge.
+# Run on the Mac mini from a checkout of this repo. Does not print the token.
 set -euo pipefail
-cd ~/muse-bridge
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$ROOT"
 command -v uv >/dev/null || brew install uv
-uv venv -q .venv && uv pip install -q --python .venv/bin/python -r requirements.txt
-[ -f .env ] || (umask 077; echo "MUSE_BRIDGE_TOKEN=$(openssl rand -hex 24)" > .env)
-cp deploy/macmini/ai.nori.muse-bridge.plist ~/Library/LaunchAgents/
-launchctl unload ~/Library/LaunchAgents/ai.nori.muse-bridge.plist 2>/dev/null || true
-launchctl load -w ~/Library/LaunchAgents/ai.nori.muse-bridge.plist
-sleep 3; curl -s http://127.0.0.1:8765/healthz; echo
-echo "Next: brew install cloudflared; either 'cloudflared tunnel --url http://127.0.0.1:8765' (temp URL)"
-echo "or a named tunnel (see README 'Durable URL')."
+uv venv -q .venv
+uv pip install -q --python .venv/bin/python -r requirements.txt
+if [[ ! -f .env ]]; then
+  umask 077
+  printf 'MUSE_BRIDGE_HOST=127.0.0.1\nMUSE_BRIDGE_PORT=8765\nMUSE_BRIDGE_DATA_DIR=%s/data\nMUSE_BRIDGE_LEGACY_SINGLE_TOKEN=0\n' "$ROOT" > .env
+  chmod 600 .env
+fi
+mkdir -p "$HOME/Library/LaunchAgents" "$HOME/Library/Logs"
+DEST="$HOME/Library/LaunchAgents/ai.nori.muse-bridge.plist"
+sed -e "s#__MUSE_BRIDGE_ROOT__#${ROOT}#g" -e "s#__HOME__#${HOME}#g" \
+  "$ROOT/deploy/macmini/ai.nori.muse-bridge.plist" > "$DEST"
+launchctl bootout "gui/$(id -u)/ai.nori.muse-bridge" 2>/dev/null || true
+launchctl bootstrap "gui/$(id -u)" "$DEST" 2>/dev/null || launchctl load -w "$DEST"
+sleep 2
+curl -fsS "http://127.0.0.1:${MUSE_BRIDGE_PORT:-8765}/healthz"
+echo
+echo "Next: brew install cloudflared, then a named tunnel. See docs/DEPLOY.md."

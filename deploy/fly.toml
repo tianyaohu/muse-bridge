@@ -1,17 +1,31 @@
-# fly launch --copy-config --no-deploy  (from /workspace/muse-bridge, after: cp deploy/fly.toml .)
-app = "nori-muse-bridge"          # change if taken
+# Local check only: flyctl config validate --strict -c deploy/fly.toml
+# This file does not deploy. Set secrets with `fly secrets set`, never in [env].
+app = "nori-muse-bridge"
 primary_region = "sea"
+
 [build]
   dockerfile = "Dockerfile"
+
 [env]
   MUSE_BRIDGE_PORT = "8080"
   MUSE_BRIDGE_HOST = "0.0.0.0"
+  MUSE_BRIDGE_DATA_DIR = "/data"
   MUSE_BRIDGE_INBOX = "/data/inbox"
+
 [[mounts]]
   source = "muse_bridge_data"
   destination = "/data"
+
 [http_service]
   internal_port = 8080
   force_https = true
   auto_stop_machines = "off"
+  auto_start_machines = true
   min_machines_running = 1
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/healthz"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "15s"

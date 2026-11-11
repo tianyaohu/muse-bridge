@@ -61,7 +61,10 @@ The legacy flag maps `MUSE_BRIDGE_TOKEN` to one user (`MUSE_BRIDGE_LEGACY_USER`,
 .venv/bin/python -m muse_bridge.admin create-key --user alice
 ```
 
-The token is printed once. Send it as `Authorization: Bearer` or `X-API-Key`. Full env list: `docs/ARCHITECTURE.md` (`.env.example` is updated separately).
+The token is printed once. Send it as `Authorization: Bearer` or `X-API-Key`. Every variable is listed in `.env.example`; behavior and defaults are in `docs/ARCHITECTURE.md`.
+
+### Limits
+Set `MUSE_BRIDGE_LIMITS_ENABLED=1` to install the rate and payload middleware. The default cap is 60 requests per 60 seconds for each credential (`Authorization: Bearer` and `X-API-Key` for the same secret share a bucket; callers with no credential share one bucket). Bodies over `MUSE_BRIDGE_MAX_BODY_BYTES` (default 1 MiB) get HTTP 413 and do not count. `GET` and `HEAD` on `/healthz` and `/` do not count. `/mcp` limit errors are JSON-RPC (`-32029` rate limit, `-32013` payload). The client address is not a key.
 
 ### Security
 - **Every route except `/healthz`, `/`, and `/.well-known/oauth-protected-resource` requires a credential.**
@@ -94,29 +97,19 @@ tunnel failed (port 7844 is blocked, for both QUIC and HTTP/2), and a localtunne
 
 ### A. Mac mini + Cloudflare named tunnel (durable URL, free; needs a domain on Cloudflare)
 ```bash
-# on the Mac mini
-scp/copy this repo to ~/muse-bridge   (or: git clone https://github.com/tianyaohu/muse-bridge ~/muse-bridge)
-~/muse-bridge/deploy/macmini/setup.sh          # venv, .env token, launchd agent (auto-start)
-brew install cloudflared
-cloudflared tunnel login
-cloudflared tunnel create nori-muse-bridge
-cloudflared tunnel route dns nori-muse-bridge muse-bridge.YOURDOMAIN.com
-cp ~/muse-bridge/deploy/macmini/cloudflared-config.yml ~/.cloudflared/config.yml   # edit paths/hostname
-sudo cloudflared service install               # keeps the tunnel up
-curl https://muse-bridge.YOURDOMAIN.com/healthz
+git clone https://github.com/tianyaohu/muse-bridge ~/muse-bridge
+~/muse-bridge/deploy/macmini/setup.sh
 ```
-If you don't have a domain, `cloudflared tunnel --url http://127.0.0.1:8765` gives a temporary
-`*.trycloudflare.com` URL. That's fine for a first test, but the URL changes on every restart.
+Then create the named tunnel and point it at `127.0.0.1:8765`. Placeholders and the exact commands are in `docs/DEPLOY.md` and `deploy/macmini/README.md`. `./tunnel.sh` is only a temporary `trycloudflare.com` URL.
 
 ### B. Fly.io (durable `https://<app>.fly.dev`)
+Validate without deploying:
+
 ```bash
-cp deploy/fly.toml . && fly launch --copy-config --no-deploy
-fly volumes create muse_bridge_data --size 1
-fly secrets set MUSE_BRIDGE_TOKEN=$(openssl rand -hex 24)
-fly deploy && curl https://<app>.fly.dev/healthz
+flyctl config validate --strict -c deploy/fly.toml
 ```
-Any other Docker host works the same way (Render, Railway, a VPS behind Caddy). Use the `Dockerfile`
-with `MUSE_BRIDGE_TOKEN` set and a persistent `/data`.
+
+Launch, volume, secrets, and `fly deploy` are operator steps in `docs/DEPLOY.md`. The image does not contain a token. Put a legacy token in `fly secrets`, or leave legacy mode off and create `mb_...` keys. Any other Docker host can use the same `Dockerfile` with a persistent `/data`.
 
 ## Connect it in Muse (Frank)
 1. In any Muse chat (web, iOS, Android, or WhatsApp), send:
@@ -172,20 +165,30 @@ and Nori reads the inbox.
 
 ## Marketplace submit checklist (later, with Frank — don't submit without him)
 
-Per-user API keys, inbox isolation, retention/deletion, and tool docs are in the tree (`docs/ARCHITECTURE.md`, `docs/TOOLS.md`). OAuth token verification and rate/payload limits are follow-ups. Do not submit yet.
+Per-user API keys, inbox isolation, retention/deletion, and tool docs are in the tree (`docs/ARCHITECTURE.md`, `docs/TOOLS.md`). Rate and payload limits ship behind `MUSE_BRIDGE_LIMITS_ENABLED`. OAuth token verification is still a follow-up. Do not submit yet.
 Submit at https://x.ai/bot/marketplace/submit-a-plugin.
 - [ ] Durable public HTTPS URL (option A or B) up for 7+ days, with `/healthz` monitored
 - [ ] Per-user auth: replace the single shared token with per-install API keys or OAuth 2.1 (needed for multi-user)
 - [ ] Per-user inbox isolation and data retention/deletion policy
 - [ ] Privacy policy and terms URLs, plus a support contact
 - [ ] Tool docs: inputs/outputs, read/write classification (`report_job_finds` and `send_message_to_nori` = write; `ping` and `list_recent_finds` = read), side effects, errors, rate limits
-- [ ] Rate limiting and payload size limits (strings are already truncated; add a per-token request rate cap)
+- [x] Rate limiting and payload size limits (`MUSE_BRIDGE_LIMITS_ENABLED=1`; 60 requests / 60s per credential, 1 MiB body; `GET /healthz` is not counted)
 - [ ] Icon, name, short and long description, screenshots of the Muse connect flow
 - [ ] Test credentials for reviewers (a separate test token, not Frank's)
 - [ ] Frank reviews and submits personally
 
+## CI
+GitHub Actions (`.github/workflows/ci.yml`) runs on pull requests and on `main`: ruff, mypy on `muse_bridge/limits.py`, and pytest (including `tests/core`).
+
+```bash
+python -m pip install -r requirements.txt -e ".[dev]"
+ruff check muse_bridge/limits.py deploy/docker/entrypoint.py tests/test_limits.py tests/test_http.py tests/test_deploy_config.py test_client.py
+mypy muse_bridge/limits.py
+pytest
+```
+
 ## Files
-`server.py` (shim) · `muse_bridge/` (app, auth, storage, tools, admin) · `docs/ARCHITECTURE.md` · `docs/TOOLS.md` ·
-`run.sh` · `test_client.py` · `sync_inbox.py` · `requirements.txt` · `Dockerfile` ·
-`deploy/fly.toml` · `deploy/macmini/{setup.sh,ai.nori.muse-bridge.plist,cloudflared-config.yml}` ·
+`server.py` (shim) · `muse_bridge/` (app, auth, storage, tools, admin, `limits.py`) · `docs/ARCHITECTURE.md` · `docs/TOOLS.md` · `docs/DEPLOY.md` ·
+`run.sh` · `test_client.py` · `sync_inbox.py` · `requirements.txt` · `Dockerfile` · `deploy/docker/entrypoint.py` ·
+`deploy/fly.toml` · `deploy/macmini/` ·
 `tunnel.sh` (quick tunnel; doesn't work from the Grok Bot box) · `nori-to-muse/{mcp-server.json,muse_chat.py,.env.example}`
