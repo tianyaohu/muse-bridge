@@ -61,7 +61,10 @@ The legacy flag maps `MUSE_BRIDGE_TOKEN` to one user (`MUSE_BRIDGE_LEGACY_USER`,
 .venv/bin/python -m muse_bridge.admin create-key --user alice
 ```
 
-The token is printed once. Send it as `Authorization: Bearer` or `X-API-Key`. Full env list: `docs/ARCHITECTURE.md` (`.env.example` is updated separately).
+The token is printed once. Send it as `Authorization: Bearer` or `X-API-Key`. Every variable is listed in `.env.example`; behavior and defaults are in `docs/ARCHITECTURE.md`.
+
+### Limits
+Set `MUSE_BRIDGE_LIMITS_ENABLED=1` to install the rate and payload middleware. The default cap is 60 requests per 60 seconds for each credential (`Authorization: Bearer` and `X-API-Key` for the same secret share a bucket; callers with no credential share one bucket). Bodies over `MUSE_BRIDGE_MAX_BODY_BYTES` (default 1 MiB) get HTTP 413 and do not count. `GET` and `HEAD` on `/healthz` and `/` do not count. `/mcp` limit errors are JSON-RPC (`-32029` rate limit, `-32013` payload). The client address is not a key.
 
 ### Security
 - **Every route except `/healthz`, `/`, and `/.well-known/oauth-protected-resource` requires a credential.**
@@ -172,17 +175,27 @@ and Nori reads the inbox.
 
 ## Marketplace submit checklist (later, with Frank — don't submit without him)
 
-Per-user API keys, inbox isolation, retention/deletion, and tool docs are in the tree (`docs/ARCHITECTURE.md`, `docs/TOOLS.md`). OAuth token verification and rate/payload limits are follow-ups. Do not submit yet.
+Per-user API keys, inbox isolation, retention/deletion, and tool docs are in the tree (`docs/ARCHITECTURE.md`, `docs/TOOLS.md`). Rate and payload limits ship behind `MUSE_BRIDGE_LIMITS_ENABLED`. OAuth token verification is still a follow-up. Do not submit yet.
 Submit at https://x.ai/bot/marketplace/submit-a-plugin.
 - [ ] Durable public HTTPS URL (option A or B) up for 7+ days, with `/healthz` monitored
 - [ ] Per-user auth: replace the single shared token with per-install API keys or OAuth 2.1 (needed for multi-user)
 - [ ] Per-user inbox isolation and data retention/deletion policy
 - [ ] Privacy policy and terms URLs, plus a support contact
 - [ ] Tool docs: inputs/outputs, read/write classification (`report_job_finds` and `send_message_to_nori` = write; `ping` and `list_recent_finds` = read), side effects, errors, rate limits
-- [ ] Rate limiting and payload size limits (strings are already truncated; add a per-token request rate cap)
+- [x] Rate limiting and payload size limits (`MUSE_BRIDGE_LIMITS_ENABLED=1`; 60 requests / 60s per credential, 1 MiB body; `GET /healthz` is not counted)
 - [ ] Icon, name, short and long description, screenshots of the Muse connect flow
 - [ ] Test credentials for reviewers (a separate test token, not Frank's)
 - [ ] Frank reviews and submits personally
+
+## CI
+GitHub Actions (`.github/workflows/ci.yml`) runs on pull requests and on `main`: ruff, mypy on `muse_bridge/limits.py`, and pytest (including `tests/core`).
+
+```bash
+python -m pip install -r requirements.txt -e ".[dev]"
+ruff check muse_bridge/limits.py tests/test_limits.py tests/test_http.py test_client.py
+mypy muse_bridge/limits.py
+pytest
+```
 
 ## Files
 `server.py` (shim) · `muse_bridge/` (app, auth, storage, tools, admin) · `docs/ARCHITECTURE.md` · `docs/TOOLS.md` ·
