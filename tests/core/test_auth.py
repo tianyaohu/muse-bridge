@@ -6,6 +6,7 @@ import os
 import stat
 import subprocess
 import sys
+from pathlib import Path
 
 from muse_bridge.app import create_app
 from muse_bridge.auth.keys import parse_api_key, secrets_equal
@@ -173,7 +174,7 @@ def test_admin_create_key_cli(tmp_path):
     env["MUSE_BRIDGE_PORT"] = "8765"
     result = subprocess.run(
         [sys.executable, "-m", "muse_bridge.admin", "create-key", "--user", "alice"],
-        cwd="/workspace",
+        cwd=Path(__file__).resolve().parents[2],
         env=env,
         capture_output=True,
         text=True,
@@ -186,7 +187,7 @@ def test_admin_create_key_cli(tmp_path):
     assert token not in (tmp_path / "data" / "keys.json").read_text(encoding="utf-8")
     listed = subprocess.run(
         [sys.executable, "-m", "muse_bridge.admin", "--data-dir", str(tmp_path / "data"), "list-keys"],
-        cwd="/workspace",
+        cwd=Path(__file__).resolve().parents[2],
         env=env,
         capture_output=True,
         text=True,

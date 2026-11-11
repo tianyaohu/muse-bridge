@@ -132,7 +132,7 @@ Common fields: `id`, `kind`, `type` (same value as `kind`, kept for `sync_inbox.
 
 Dedupe for jobs is per user: SHA-1 (16 hex chars) of the lowercased URL without a trailing slash, or `title|company` when the URL is empty. The same posting can exist once per user. A second `report_job_finds` of the same URL skips it. Generic kinds and messages dedupe only when the caller passes `dedupe_key` (stored as a SHA-256 prefix, not the raw key).
 
-`GET /api/inbox?since=<iso>&type=all|finds|messages` returns `{"count", "records"}` for the caller, oldest first, `received_at` strictly greater than `since`. `type=finds` is `job_find`; `type=messages` is `message`. `kind=<kind>` filters one kind and overrides `type`. There is no `user` query parameter. The credential is the user.
+`GET /api/inbox?since=<iso>&type=all|finds|messages` returns `{"count", "records"}` for the caller, oldest first by absolute time. `since` is exclusive. Both `since` and `received_at` are parsed as ISO-8601; a naive timestamp (no offset) is UTC, and `Z` is UTC. An empty `since` is no lower bound. An unparseable `since` is HTTP 400 `{"error": "invalid_since"}`. A record with an unparseable `received_at` is omitted when `since` is set and sorts last otherwise. `type=finds` is `job_find`; `type=messages` is `message`. `kind=<kind>` filters one kind and overrides `type`. There is no `user` query parameter. The credential is the user. `list_recent_finds` treats a missing or JSON-null `company` as empty, so a filter of `none` does not match it.
 
 `list_items` and `list_recent_finds` return newest first.
 

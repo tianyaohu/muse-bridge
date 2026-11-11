@@ -16,7 +16,7 @@ import json
 import math
 import uuid
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from muse_bridge.clock import parse_iso, utcnow_iso
@@ -229,7 +229,12 @@ def list_items(
             validate_kind(kind)
         except ValueError:
             return {"count": 0, "items": [], "error": "invalid_kind"}
-    rows = store.list_records(user_id, kind=kind or None, since=since if since else None)
+    try:
+        rows = store.list_records(user_id, kind=kind or None, since=since if since else None)
+    except ValueError as exc:
+        if str(exc) == "invalid_since":
+            return {"count": 0, "items": [], "error": "invalid_since"}
+        raise
     rows = list(reversed(rows))[:_limit(limit)]
     return {"count": len(rows), "items": rows}
 
@@ -244,7 +249,7 @@ def list_recent_finds(
     rows = store.list_records(user_id, kind="job_find")
     if company:
         needle = company.lower()
-        rows = [row for row in rows if needle in str(row.get("company", "")).lower()]
+        rows = [row for row in rows if needle in _company_text(row).lower()]
     rows = list(reversed(rows))[:_limit(limit)]
     fields = ("id", "received_at", "title", "company", "location", "url", "posted", "status")
     return {
@@ -263,7 +268,7 @@ def pull_inbox(
 ) -> dict[str, Any]:
     selected = _pull_kind(type_filter, kind)
     rows = store.list_records(user_id, kind=selected, since=since)
-    rows.sort(key=lambda row: str(row.get("received_at", "")))
+    rows.sort(key=_received_at_sort_key)
     return {"count": len(rows), "records": rows}
 
 
@@ -377,6 +382,21 @@ def _limit(limit: int) -> int:
     except (TypeError, ValueError):
         value = 20
     return max(1, min(value, MAX_LIST))
+
+
+def _company_text(row: dict[str, Any]) -> str:
+    """Missing and JSON null are empty. They are not the letters ``none``."""
+    value = row.get("company") or ""
+    return value if isinstance(value, str) else ""
+
+
+_UNDATED = datetime.max.replace(tzinfo=timezone.utc)
+
+
+def _received_at_sort_key(row: dict[str, Any]) -> datetime:
+    value = row.get("received_at")
+    parsed = parse_iso(value) if isinstance(value, str) else None
+    return parsed or _UNDATED
 
 
 def _clip(value: object, limit: int) -> str:

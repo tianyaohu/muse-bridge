@@ -70,7 +70,7 @@ Read. No side effects.
 |---|---|
 | Annotations | read-only, idempotent, not destructive, closed world |
 | Scope | `inbox:read` |
-| Inputs | `kind` (default all), `limit` (default 20, max 200), `since` (ISO time, exclusive; default none) |
+| Inputs | `kind` (default all), `limit` (default 20, max 200), `since` (ISO time, exclusive; default none). Compared as absolute time. A naive timestamp is UTC. `+00:00` and `-05:00` are offsets, not text. An unparseable `since` returns `error: "invalid_since"`. |
 | Output | `{"count", "items"}` newest first. Full stored records. |
 | Errors | `invalid_kind` returns `{"count": 0, "items": [], "error": "invalid_kind"}` |
 
@@ -117,7 +117,7 @@ Read. Compatible with the original tool.
 |---|---|
 | Annotations | read-only, idempotent, not destructive, closed world |
 | Scope | `inbox:read` |
-| Inputs | `limit` (default 20, max 200), `company` (case-insensitive substring, default empty) |
+| Inputs | `limit` (default 20, max 200), `company` (case-insensitive substring, default empty). A missing or JSON-null `company` is empty, so the filter `none` does not match it. |
 | Output | `{"count", "finds"}` newest first. Each find has `id`, `received_at`, `title`, `company`, `location`, `url`, `posted`, `status`. |
 | Side effects | none |
 
@@ -154,7 +154,7 @@ No webhook. The HTTP equivalent is `DELETE /api/inbox?confirm=delete`.
 
 `GET /api/inbox` requires `inbox:read`.
 
-Query: `since` (ISO, exclusive, default empty which keeps every record with a non-empty `received_at`), `type` (`all`, `finds`, or `messages`; default `all`), `kind` (overrides `type`).
+Query: `since` (ISO-8601, exclusive, absolute time; a naive timestamp is UTC; default empty keeps every record), `type` (`all`, `finds`, or `messages`; default `all`), `kind` (overrides `type`). An unparseable `since` is HTTP 400 `{"error": "invalid_since"}`. When `since` is set, a record whose `received_at` cannot be parsed is left out. Results are oldest first by that instant; an unparseable `received_at` sorts last.
 
 Output: `{"count", "records"}` oldest first, the caller's records only.
 

@@ -1,4 +1,10 @@
-"""UTC timestamps stored on records. The format is fixed so string ordering matches time ordering."""
+"""UTC timestamps stored on records.
+
+``parse_iso`` accepts ISO-8601, including a ``Z`` suffix and numeric offsets.
+A naive timestamp (no offset) is UTC. Unparseable input returns None.
+Do not order these strings as text: ``+00:00`` and ``-05:00`` do not sort
+in time order.
+"""
 
 from __future__ import annotations
 

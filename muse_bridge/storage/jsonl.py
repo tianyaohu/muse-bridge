@@ -72,6 +72,30 @@ def _matches_kind(row: dict[str, Any], kind: str) -> bool:
     return row.get("kind") == kind or row.get("type") == kind
 
 
+def _since_cutoff(since: str | None) -> datetime | None:
+    """Blank ``since`` is no lower bound. Anything else must be ISO-8601.
+
+    Comparison is absolute time. A naive timestamp is UTC (see ``parse_iso``).
+    """
+    if since is None or not since.strip():
+        return None
+    parsed = parse_iso(since.strip())
+    if parsed is None:
+        raise ValueError("invalid_since")
+    return parsed
+
+
+def _parse_received_at(value: object) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    return parse_iso(value)
+
+
+def _received_after(row: dict[str, Any], cutoff: datetime) -> bool:
+    stamped = _parse_received_at(row.get("received_at"))
+    return stamped is not None and stamped > cutoff
+
+
 class JsonlInboxStore:
     def __init__(self, root: Path):
         self.root = Path(root)
@@ -127,8 +151,9 @@ class JsonlInboxStore:
         rows = _parse_jsonl(text)
         if kind:
             rows = [row for row in rows if _matches_kind(row, kind)]
-        if since is not None:
-            rows = [row for row in rows if str(row.get("received_at", "")) > since]
+        cutoff = _since_cutoff(since)
+        if cutoff is not None:
+            rows = [row for row in rows if _received_after(row, cutoff)]
         return rows
 
     def delete_records(
@@ -144,12 +169,14 @@ class JsonlInboxStore:
             return 0
 
         def keep(row: dict[str, Any]) -> bool:
-            if ids is not None and str(row.get("id", "")) not in ids:
+            record_id = row.get("id")
+            record_id = record_id if isinstance(record_id, str) else ""
+            if ids is not None and record_id not in ids:
                 return True
             if kind and not _matches_kind(row, kind):
                 return True
             if before is not None:
-                stamped = parse_iso(str(row.get("received_at", "")))
+                stamped = _parse_received_at(row.get("received_at"))
                 if stamped is None or stamped >= before:
                     return True
             return False

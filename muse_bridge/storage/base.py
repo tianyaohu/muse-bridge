@@ -28,8 +28,11 @@ class InboxStore(Protocol):
     ) -> list[dict[str, Any]]:
         """Return that user's records, oldest first.
 
-        ``since`` keeps records whose ``received_at`` is strictly greater than
-        the given string (the historical pull-API comparison).
+        ``since`` keeps records whose ``received_at`` is strictly later than
+        that instant. Both sides are parsed with ``parse_iso`` (naive
+        timestamps are UTC). A blank ``since`` does not filter. An unparseable
+        ``since`` raises ``ValueError("invalid_since")``. A record whose
+        ``received_at`` cannot be parsed is omitted when ``since`` is set.
         """
 
     def delete_records(

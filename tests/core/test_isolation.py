@@ -160,6 +160,7 @@ def test_admin_delete_user_leaves_the_other_user(bridge, tmp_path):
     import os
     import subprocess
     import sys
+    from pathlib import Path
 
     env = os.environ.copy()
     env["MUSE_BRIDGE_PORT"] = "8765"
@@ -175,7 +176,7 @@ def test_admin_delete_user_leaves_the_other_user(bridge, tmp_path):
             "alice",
             "--yes",
         ],
-        cwd="/workspace",
+        cwd=Path(__file__).resolve().parents[2],
         env=env,
         capture_output=True,
         text=True,
