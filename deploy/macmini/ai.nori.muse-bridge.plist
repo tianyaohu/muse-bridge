@@ -1,13 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- cp to ~/Library/LaunchAgents/ ; launchctl load -w ~/Library/LaunchAgents/ai.nori.muse-bridge.plist -->
-<plist version="1.0"><dict>
-  <key>Label</key><string>ai.nori.muse-bridge</string>
-  <key>ProgramArguments</key><array>
-    <string>/bin/bash</string><string>-lc</string>
-    <string>cd ~/muse-bridge &amp;&amp; ./run.sh</string>
+<!-- setup.sh substitutes __MUSE_BRIDGE_ROOT__ and __HOME__. Do not put a token here. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>ai.nori.muse-bridge</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__MUSE_BRIDGE_ROOT__/run.sh</string>
   </array>
-  <key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
-  <key>StandardOutPath</key><string>/tmp/muse-bridge.log</string>
-  <key>StandardErrorPath</key><string>/tmp/muse-bridge.err</string>
-</dict></plist>
+  <key>WorkingDirectory</key>
+  <string>__MUSE_BRIDGE_ROOT__</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+  <key>StandardOutPath</key>
+  <string>__HOME__/Library/Logs/muse-bridge.log</string>
+  <key>StandardErrorPath</key>
+  <string>__HOME__/Library/Logs/muse-bridge.err</string>
+</dict>
+</plist>

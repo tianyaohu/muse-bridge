@@ -1,6 +1,7 @@
-# ~/.cloudflared/config.yml on the Mac mini (named tunnel => durable URL)
+# Copy to ~/.cloudflared/config.yml and edit the placeholders.
+# Do not commit the credentials JSON. cloudflared writes that file itself.
 tunnel: nori-muse-bridge
-credentials-file: /Users/REPLACE_ME/.cloudflared/<TUNNEL_UUID>.json
+credentials-file: /Users/REPLACE_ME/.cloudflared/TUNNEL_UUID.json
 ingress:
   - hostname: muse-bridge.YOURDOMAIN.com
     service: http://127.0.0.1:8765

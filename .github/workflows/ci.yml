@@ -19,8 +19,8 @@ jobs:
           python -m pip install -r requirements.txt -e ".[dev]"
       - name: Lint
         run: |
-          ruff check muse_bridge/limits.py tests/test_limits.py tests/test_http.py test_client.py
-          ruff format --check muse_bridge/limits.py tests/test_limits.py tests/test_http.py test_client.py
+          ruff check muse_bridge/limits.py deploy/docker/entrypoint.py tests/test_limits.py tests/test_http.py tests/test_deploy_config.py test_client.py
+          ruff format --check muse_bridge/limits.py deploy/docker/entrypoint.py tests/test_limits.py tests/test_http.py tests/test_deploy_config.py test_client.py
       - name: Typecheck
         run: mypy muse_bridge/limits.py
       - name: Test

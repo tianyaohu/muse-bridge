@@ -97,29 +97,19 @@ tunnel failed (port 7844 is blocked, for both QUIC and HTTP/2), and a localtunne
 
 ### A. Mac mini + Cloudflare named tunnel (durable URL, free; needs a domain on Cloudflare)
 ```bash
-# on the Mac mini
-scp/copy this repo to ~/muse-bridge   (or: git clone https://github.com/tianyaohu/muse-bridge ~/muse-bridge)
-~/muse-bridge/deploy/macmini/setup.sh          # venv, .env token, launchd agent (auto-start)
-brew install cloudflared
-cloudflared tunnel login
-cloudflared tunnel create nori-muse-bridge
-cloudflared tunnel route dns nori-muse-bridge muse-bridge.YOURDOMAIN.com
-cp ~/muse-bridge/deploy/macmini/cloudflared-config.yml ~/.cloudflared/config.yml   # edit paths/hostname
-sudo cloudflared service install               # keeps the tunnel up
-curl https://muse-bridge.YOURDOMAIN.com/healthz
+git clone https://github.com/tianyaohu/muse-bridge ~/muse-bridge
+~/muse-bridge/deploy/macmini/setup.sh
 ```
-If you don't have a domain, `cloudflared tunnel --url http://127.0.0.1:8765` gives a temporary
-`*.trycloudflare.com` URL. That's fine for a first test, but the URL changes on every restart.
+Then create the named tunnel and point it at `127.0.0.1:8765`. Placeholders and the exact commands are in `docs/DEPLOY.md` and `deploy/macmini/README.md`. `./tunnel.sh` is only a temporary `trycloudflare.com` URL.
 
 ### B. Fly.io (durable `https://<app>.fly.dev`)
+Validate without deploying:
+
 ```bash
-cp deploy/fly.toml . && fly launch --copy-config --no-deploy
-fly volumes create muse_bridge_data --size 1
-fly secrets set MUSE_BRIDGE_TOKEN=$(openssl rand -hex 24)
-fly deploy && curl https://<app>.fly.dev/healthz
+flyctl config validate --strict -c deploy/fly.toml
 ```
-Any other Docker host works the same way (Render, Railway, a VPS behind Caddy). Use the `Dockerfile`
-with `MUSE_BRIDGE_TOKEN` set and a persistent `/data`.
+
+Launch, volume, secrets, and `fly deploy` are operator steps in `docs/DEPLOY.md`. The image does not contain a token. Put a legacy token in `fly secrets`, or leave legacy mode off and create `mb_...` keys. Any other Docker host can use the same `Dockerfile` with a persistent `/data`.
 
 ## Connect it in Muse (Frank)
 1. In any Muse chat (web, iOS, Android, or WhatsApp), send:
@@ -192,13 +182,13 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on pull requests and on `main`:
 
 ```bash
 python -m pip install -r requirements.txt -e ".[dev]"
-ruff check muse_bridge/limits.py tests/test_limits.py tests/test_http.py test_client.py
+ruff check muse_bridge/limits.py deploy/docker/entrypoint.py tests/test_limits.py tests/test_http.py tests/test_deploy_config.py test_client.py
 mypy muse_bridge/limits.py
 pytest
 ```
 
 ## Files
-`server.py` (shim) · `muse_bridge/` (app, auth, storage, tools, admin) · `docs/ARCHITECTURE.md` · `docs/TOOLS.md` ·
-`run.sh` · `test_client.py` · `sync_inbox.py` · `requirements.txt` · `Dockerfile` ·
-`deploy/fly.toml` · `deploy/macmini/{setup.sh,ai.nori.muse-bridge.plist,cloudflared-config.yml}` ·
+`server.py` (shim) · `muse_bridge/` (app, auth, storage, tools, admin, `limits.py`) · `docs/ARCHITECTURE.md` · `docs/TOOLS.md` · `docs/DEPLOY.md` ·
+`run.sh` · `test_client.py` · `sync_inbox.py` · `requirements.txt` · `Dockerfile` · `deploy/docker/entrypoint.py` ·
+`deploy/fly.toml` · `deploy/macmini/` ·
 `tunnel.sh` (quick tunnel; doesn't work from the Grok Bot box) · `nori-to-muse/{mcp-server.json,muse_chat.py,.env.example}`
