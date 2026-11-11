@@ -23,12 +23,5 @@ jobs:
           ruff format --check muse_bridge/limits.py deploy/docker/entrypoint.py tests/test_limits.py tests/test_http.py tests/test_deploy_config.py test_client.py
       - name: Typecheck
         run: mypy muse_bridge/limits.py
-      - name: Checkout path for core CLI tests
-        run: |
-          # tests/core launches admin with cwd=/workspace. The runner checkout
-          # lives under /home/runner/work, so expose it at that path.
-          if [ ! -e /workspace ]; then
-            sudo ln -s "$GITHUB_WORKSPACE" /workspace
-          fi
       - name: Test
         run: pytest
